@@ -9,10 +9,12 @@
 - **Objetivo**: scaffold de harness y especificaciones (sin código de implementación).
 
 ## Fase actual
-Fase 2 — **DESPLEGADO en AWS EKS** (2026-11-17 22:42).
-- **URL pública**: http://a2384f55c9dcd4efcb511803a26b72d2-635917248.us-east-1.elb.amazonaws.com
-- Clúster `biblioteca-eks` (1.37, 2×t3.medium, us-east-1) · ECR `423623848858.dkr.ecr.us-east-1.amazonaws.com/biblioteca/*:f1e24f8`
-- Smoke manual OK: health de front/A/B, alta de libro (A), socio (B), préstamo (B), búsqueda sin acentos.
+Fase 3 — **Infraestructura AWS DESTRUIDA** (2026-11-18). El despliegue se demostró y quedó grabado en `vide_Evidencia_Despliegue.mp4`.
+- Borrado en orden: namespace (ELB + EBS) → `eksctl delete cluster` → `terraform destroy` (ECR ×3, rol IAM) → bucket S3 de estado.
+- Auditoría final en us-east-1: 0 clústeres EKS, 0 EC2, 0 NAT, 0 ELB, 0 EBS, 0 IPs elásticas, 0 repos ECR, 0 stacks eksctl, 0 VPC del proyecto.
+- Se conserva el proveedor OIDC de GitHub (existía antes del proyecto; no tiene coste).
+- Workflow `cd` **deshabilitado** en GitHub (`gh workflow enable cd` para reactivarlo tras recrear la infraestructura).
+- Para recrear todo: bootstrap del bucket → `terraform apply` → `eksctl create cluster` → bootstrap k8s + secrets → push a main.
 
 ## Hecho
 - Estructura del monorepo, `CLAUDE.md`/`AGENTS.md`, constitución v1.0.0.
