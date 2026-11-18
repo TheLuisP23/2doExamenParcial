@@ -27,7 +27,7 @@ variable "region" {
 
 variable "github_repository" {
   type    = string
-  default = "TheLuisP23/biblioteca-sdd-eks"
+  default = "TheLuisP23/2doExamenParcial"
 }
 
 variable "github_branch" {

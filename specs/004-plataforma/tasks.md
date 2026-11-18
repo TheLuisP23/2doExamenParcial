@@ -18,10 +18,10 @@
   - Archivos: `deploy/terraform/**`, `scripts/tf-backend-bootstrap.sh`, `tests/platform/test_terraform_static.py`
   - Hecho cuando: `terraform fmt/validate` y pruebas en verde; `make verify` verde.
 
-- [ ] **TASK-P-03** — Manifiestos Kubernetes, Secrets y render
+- [x] **TASK-P-03** — Manifiestos Kubernetes, Secrets y render
   - Tipo: impl
   - Depende de: —
-  - REQ: REQ-P-007, REQ-P-008, REQ-P-009, REQ-P-010, REQ-P-011, REQ-P-012, REQ-P-017, REQ-P-018, REQ-SYS-002
+  - REQ: REQ-P-007, REQ-P-008, REQ-P-009, REQ-P-010, REQ-P-011, REQ-P-012, REQ-P-017, REQ-SYS-002
   - Archivos: `deploy/k8s/**`, `scripts/k8s-secrets.sh`, `scripts/render-manifests.sh`, `tests/platform/test_k8s_manifests.py`, `tests/system/**`
   - Hecho cuando: kubeconform y pruebas en verde; `make verify` verde.
 
@@ -32,11 +32,11 @@
   - Archivos: `tests/platform/test_dockerfiles.py`, `tests/platform/test_compose.py`, `docker-compose.yml`, `deploy/local/**`
   - Hecho cuando: `./init.sh --up` deja todo healthy; pruebas en verde; `make verify` verde.
 
-- [ ] **TASK-P-05** — Workflows CI/CD
+- [x] **TASK-P-05** — Workflows CI/CD
   - Tipo: impl
   - Depende de: TASK-P-02, TASK-P-03
   - REQ: REQ-P-013, REQ-P-014
-  - Archivos: `.github/workflows/**`, `tests/platform/test_workflows.py`
+  - Archivos: `.github/workflows/**`, `tests/platform/test_workflows.py`, `deploy/terraform/main.tf`, `specs/004-plataforma/spec.md`
   - Hecho cuando: pruebas en verde; `make verify` verde.
 
 - [ ] **TASK-P-06** — Smoke tests y scripts de aprovisionamiento/destrucción
@@ -52,3 +52,11 @@
   - REQ: REQ-P-015, REQ-P-016
   - Archivos: `PROGRESS.md`, `docs/runbook.md`
   - Hecho cuando: app accesible por la URL del LB; smoke en verde; URL anotada en PROGRESS.md.
+
+- [ ] **TASK-P-08** — NetworkPolicies (default deny + cada BD solo desde su servicio) y usuario de app en Mongo
+  - Tipo: impl
+  - Depende de: TASK-P-03
+  - REQ: REQ-P-018
+  - Archivos: `deploy/k8s/**`, `tests/platform/test_k8s_manifests.py`
+  - Hecho cuando: pruebas de políticas en verde; desde un pod de service-b no se alcanza postgres:5432; `make verify` verde.
+

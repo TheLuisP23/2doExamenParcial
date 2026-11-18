@@ -1,0 +1,74 @@
+# CD (REQ-P-014): en cada push a main construye las 3 imágenes, las publica en ECR (tag = SHA)
+# y despliega en EKS. Autenticación por OIDC (sin access keys). Variables de repo: AWS_ROLE_ARN, AWS_REGION, EKS_CLUSTER_NAME.
+name: cd
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      CLUSTER: ${{ vars.EKS_CLUSTER_NAME }}
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Credenciales AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login en ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Build del bundle del frontend
+        working-directory: frontend
+        run: npm ci && npm run build
+
+      - name: Build y push de imágenes
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          for app in service-a service-b frontend; do
+            ctx="services/$app"; [ "$app" = frontend ] && ctx=frontend
+            docker build -t "$ECR_REGISTRY/biblioteca/$app:$IMAGE_TAG" "$ctx"
+            docker push "$ECR_REGISTRY/biblioteca/$app:$IMAGE_TAG"
+          done
+
+      - name: Desplegar en EKS
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          aws eks update-kubeconfig --name "$CLUSTER" --region "$AWS_REGION"
+          bash scripts/render-manifests.sh | kubectl apply -n biblioteca -f -
+          for d in service-a service-b frontend; do
+            kubectl -n biblioteca rollout status "deployment/$d" --timeout=300s
+          done
+
+      - name: Smoke test contra el LoadBalancer
+        run: |
+          HOST=$(kubectl -n biblioteca get svc frontend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "URL: http://$HOST"
+          for p in /health/ready /api/a/health/ready /api/b/health/ready; do
+            for i in $(seq 1 30); do curl -fsS "http://$HOST$p" && break; sleep 10; done
+            curl -fsS "http://$HOST$p" >/dev/null
+          done

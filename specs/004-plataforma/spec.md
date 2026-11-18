@@ -142,7 +142,7 @@ de nodos, HPA, RDS/DocumentDB, backups de BD, multi-entorno (staging/prod), obse
 External Secrets/Secrets Manager, firmado de imágenes.
 
 ## Preguntas abiertas (resueltas 2026-11-17)
-- Q-P-1: repositorio **`TheLuisP23/biblioteca-sdd-eks`** (trust policy: `repo:TheLuisP23/biblioteca-sdd-eks:ref:refs/heads/main`).
+- Q-P-1: repositorio **`TheLuisP23/2doExamenParcial`** (trust policy: `repo:TheLuisP23/2doExamenParcial:ref:refs/heads/main`).
 - Q-P-2: bucket de estado `biblioteca-tfstate-<account-id>` (lo crea `scripts/tf-backend-bootstrap.sh`).
 - Q-P-3: Kubernetes **1.37** (coincide con el kubectl 1.37 instalado; eksctl 0.231 lo soporta).
 - Q-P-4: **Classic LB** por defecto (sin anotaciones; lo más rápido).

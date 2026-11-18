@@ -26,7 +26,8 @@ Fase 2 — **DESPLEGADO en AWS EKS** (2026-11-17 22:42).
 ## En curso
 - Cierre formal (verify) de TASK-F-01, TASK-P-02, TASK-P-03; luego TASK-P-05 (CD).
 - Repo público creado: https://github.com/TheLuisP23/2doExamenParcial (variables AWS_ROLE_ARN, AWS_REGION, EKS_CLUSTER_NAME configuradas).
-- Pendiente: actualizar la trust policy del rol IAM a `repo:TheLuisP23/2doExamenParcial:ref:refs/heads/main` (el nombre del repo cambió).
+- Trust policy del rol IAM actualizada a `repo:TheLuisP23/2doExamenParcial:ref:refs/heads/main` (terraform apply con `-var`; falta cambiar el default en `main.tf`).
+- TASK-P-03 cerrándose; REQ-P-018 (NetworkPolicies) movido a la nueva TASK-P-08 pendiente.
 
 ## Siguiente
 1. **Humano**: revisar specs y responder las preguntas `[NEEDS CLARIFICATION]` (lista en el resumen de la sesión 1).
@@ -35,8 +36,8 @@ Fase 2 — **DESPLEGADO en AWS EKS** (2026-11-17 22:42).
    `TASK-B-01`, `TASK-F-01`, `TASK-P-01`, `TASK-P-03`, `TASK-P-05`, `TASK-P-07`, `TASK-P-09`, `TASK-P-11`, `TASK-P-12`.
 
 ## TODO (pendiente tras el despliegue)
-- [ ] Cerrar con `make task-done`: TASK-F-01 (activa), TASK-P-02 y TASK-P-03 (código aplicado y probado; falta el verify formal).
-- [ ] TASK-P-05: workflow CD (`.github/workflows/cd.yml`) + crear repo `TheLuisP23/biblioteca-sdd-eks` y `git push`.
+- [x] TASK-F-01, TASK-P-02, TASK-P-03 cerradas con verify verde.
+- [x] TASK-P-05: workflow CD + repo público `TheLuisP23/2doExamenParcial`.
 - [ ] TASK-P-04 (tests Dockerfiles/compose), TASK-P-06 (smoke automatizado + infra-up/down), TASK-S-01, TASK-F-02 (E2E).
 - [ ] NetworkPolicies (REQ-P-018) y usuario de app en Mongo (hoy B usa root).
 - [ ] El build de Docker del front copia `dist/` precompilado (no multi-stage) por la lentitud de npm dentro de Docker.
