@@ -1,0 +1,30 @@
+# REQ-F-008 / REQ-SYS-001 — SPA + proxy reverso con strip de prefijo, sin CORS. Upstreams por entorno (REQ-F-009).
+server {
+  listen 8080;
+  server_name _;
+  root /usr/share/nginx/html;
+
+  add_header X-Content-Type-Options nosniff always;
+  add_header Referrer-Policy same-origin always;
+  add_header X-Frame-Options DENY always;
+
+  location = /health/live  { default_type application/json; return 200 '{"status":"ok"}'; }
+  location = /health/ready { default_type application/json; return 200 '{"status":"ok"}'; }
+
+  location /api/a/ {
+    proxy_pass ${SERVICE_A_UPSTREAM}/;
+    proxy_set_header X-Request-ID $request_id;
+    proxy_set_header Host $host;
+  }
+  location /api/b/ {
+    proxy_pass ${SERVICE_B_UPSTREAM}/;
+    proxy_set_header X-Request-ID $request_id;
+    proxy_set_header Host $host;
+  }
+
+  location /assets/ { add_header Cache-Control "public, max-age=31536000, immutable"; }
+  location / {
+    add_header Cache-Control "no-cache";
+    try_files $uri /index.html;
+  }
+}

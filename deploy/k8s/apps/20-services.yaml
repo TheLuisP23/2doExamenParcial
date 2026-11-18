@@ -1,0 +1,155 @@
+# REQ-P-010, REQ-P-011 — Deployments con probes, requests/limits y securityContext; Services ClusterIP
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-a
+  namespace: biblioteca
+  labels: { app.kubernetes.io/name: service-a, app.kubernetes.io/part-of: biblioteca, app.kubernetes.io/component: api }
+spec:
+  type: ClusterIP
+  selector: { app.kubernetes.io/name: service-a }
+  ports: [{ name: http, port: 8000, targetPort: 8000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-a
+  namespace: biblioteca
+  labels: { app.kubernetes.io/name: service-a, app.kubernetes.io/part-of: biblioteca, app.kubernetes.io/component: api }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app.kubernetes.io/name: service-a }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: service-a, app.kubernetes.io/part-of: biblioteca, app.kubernetes.io/component: api }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: service-a
+          image: ${ECR_REGISTRY}/biblioteca/service-a:${IMAGE_TAG}
+          ports: [{ containerPort: 8000 }]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: password } }
+            - { name: SERVICE_A_DATABASE_URL, value: "postgresql+psycopg://books:$(POSTGRES_PASSWORD)@postgres:5432/books" }
+            - { name: SERVICE_A_PORT, value: "8000" }
+            - { name: SERVICE_A_LOG_LEVEL, value: INFO }
+          startupProbe:
+            httpGet: { path: /health/live, port: 8000 }
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 8000 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health/live, port: 8000 }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-b
+  namespace: biblioteca
+  labels: { app.kubernetes.io/name: service-b, app.kubernetes.io/part-of: biblioteca, app.kubernetes.io/component: api }
+spec:
+  type: ClusterIP
+  selector: { app.kubernetes.io/name: service-b }
+  ports: [{ name: http, port: 3000, targetPort: 3000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-b
+  namespace: biblioteca
+  labels: { app.kubernetes.io/name: service-b, app.kubernetes.io/part-of: biblioteca, app.kubernetes.io/component: api }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app.kubernetes.io/name: service-b }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: service-b, app.kubernetes.io/part-of: biblioteca, app.kubernetes.io/component: api }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: service-b
+          image: ${ECR_REGISTRY}/biblioteca/service-b:${IMAGE_TAG}
+          ports: [{ containerPort: 3000 }]
+          env:
+            - name: MONGO_PASSWORD
+              valueFrom: { secretKeyRef: { name: mongo-credentials, key: password } }
+            - { name: SERVICE_B_MONGO_URI, value: "mongodb://root:$(MONGO_PASSWORD)@mongo:27017/?authSource=admin" }
+            - { name: SERVICE_B_PORT, value: "3000" }
+          startupProbe:
+            httpGet: { path: /health/live, port: 3000 }
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 3000 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health/live, port: 3000 }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { cpu: 500m, memory: 384Mi }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: biblioteca
+  labels: { app.kubernetes.io/name: frontend, app.kubernetes.io/part-of: biblioteca, app.kubernetes.io/component: web }
+spec:
+  type: LoadBalancer
+  selector: { app.kubernetes.io/name: frontend }
+  ports: [{ name: http, port: 80, targetPort: 8080, protocol: TCP }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: biblioteca
+  labels: { app.kubernetes.io/name: frontend, app.kubernetes.io/part-of: biblioteca, app.kubernetes.io/component: web }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app.kubernetes.io/name: frontend }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: frontend, app.kubernetes.io/part-of: biblioteca, app.kubernetes.io/component: web }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 101, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: frontend
+          image: ${ECR_REGISTRY}/biblioteca/frontend:${IMAGE_TAG}
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: SERVICE_A_UPSTREAM, value: "http://service-a:8000" }
+            - { name: SERVICE_B_UPSTREAM, value: "http://service-b:3000" }
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 8080 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health/live, port: 8080 }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: confd, mountPath: /etc/nginx/conf.d }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - { name: confd, emptyDir: {} }

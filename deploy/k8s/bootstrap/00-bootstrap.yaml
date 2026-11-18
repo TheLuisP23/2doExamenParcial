@@ -1,0 +1,21 @@
+# REQ-P-007, REQ-P-017 — lo aplica el operador (cluster-admin): namespace y StorageClass gp3
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: biblioteca
+  labels:
+    app.kubernetes.io/part-of: biblioteca
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  labels:
+    app.kubernetes.io/part-of: biblioteca
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+allowVolumeExpansion: true

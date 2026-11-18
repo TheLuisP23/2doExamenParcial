@@ -9,7 +9,10 @@
 - **Objetivo**: scaffold de harness y especificaciones (sin código de implementación).
 
 ## Fase actual
-Fase 0 — **Specs y harness en revisión humana**. Ninguna feature implementada (0/47 `passes: true`).
+Fase 2 — **DESPLEGADO en AWS EKS** (2026-11-17 22:42).
+- **URL pública**: http://a2384f55c9dcd4efcb511803a26b72d2-635917248.us-east-1.elb.amazonaws.com
+- Clúster `biblioteca-eks` (1.37, 2×t3.medium, us-east-1) · ECR `423623848858.dkr.ecr.us-east-1.amazonaws.com/biblioteca/*:f1e24f8`
+- Smoke manual OK: health de front/A/B, alta de libro (A), socio (B), préstamo (B), búsqueda sin acentos.
 
 ## Hecho
 - Estructura del monorepo, `CLAUDE.md`/`AGENTS.md`, constitución v1.0.0.
@@ -29,14 +32,14 @@ Fase 0 — **Specs y harness en revisión humana**. Ninguna feature implementada
 3. Tareas listas para empezar (en paralelo, WIP=1 por agente): `TASK-S-01`, `TASK-S-02`, `TASK-A-01`,
    `TASK-B-01`, `TASK-F-01`, `TASK-P-01`, `TASK-P-03`, `TASK-P-05`, `TASK-P-07`, `TASK-P-09`, `TASK-P-11`, `TASK-P-12`.
 
-## TODO (pendiente por falta de tiempo en la sesión 1)
-- [ ] Cerrar `TASK-S-00` con `make task-done ID=TASK-S-00` (se abortó para editar la spec; sus archivos ya existen).
-- [ ] Re-ejecutar las autopruebas del harness tras normalizar rutas en los hooks (scope_guard/post_edit/stop).
-- [ ] Ejecutar `./init.sh` completo (crea `.venv-tools`, instala pre-commit, copia `.env`) — el clasificador de modo auto lo bloqueó; requiere que lo ejecute un humano.
-- [ ] `make verify` completo en el repo real (verificado solo en la copia: VERDE con SKIP de componentes sin crear).
-- [ ] Revisión con el subagente `spec-reviewer` de las specs 000–004.
-- [ ] Fijar acciones de GitHub por SHA en `ci.yml` (TASK-P-10).
-- [ ] Instalar `uv`, `make`, `kubeconform`, `gitleaks` localmente; arrancar Docker Desktop.
+## TODO (pendiente tras el despliegue)
+- [ ] Cerrar con `make task-done`: TASK-F-01 (activa), TASK-P-02 y TASK-P-03 (código aplicado y probado; falta el verify formal).
+- [ ] TASK-P-05: workflow CD (`.github/workflows/cd.yml`) + crear repo `TheLuisP23/biblioteca-sdd-eks` y `git push`.
+- [ ] TASK-P-04 (tests Dockerfiles/compose), TASK-P-06 (smoke automatizado + infra-up/down), TASK-S-01, TASK-F-02 (E2E).
+- [ ] NetworkPolicies (REQ-P-018) y usuario de app en Mongo (hoy B usa root).
+- [ ] El build de Docker del front copia `dist/` precompilado (no multi-stage) por la lentitud de npm dentro de Docker.
+- [ ] Revisar fallo intermitente de integración de A cuando Docker está cargado.
+- [ ] **Coste**: al terminar el examen, destruir: `kubectl delete ns biblioteca` → `eksctl delete cluster -f .harness/cluster.rendered.yaml --wait` → `terraform destroy`.
 
 ## Bloqueos
 - Preguntas abiertas que afectan al diseño: Q-SYS-1 (dominio), Q-B-5 (versión de Node), Q-P-1 (`owner/repo` para OIDC), Q-P-2 (bucket de estado).
