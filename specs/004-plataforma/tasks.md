@@ -11,7 +11,7 @@
   - Archivos: `deploy/eksctl/**`, `scripts/render-cluster-config.sh`, `tests/platform/test_eksctl_config.py`, `tests/platform/conftest.py`, `tests/conftest.py`
   - Hecho cuando: pruebas en verde; `eksctl create cluster --dry-run` sin error; `make verify` verde.
 
-- [ ] **TASK-P-02** — Terraform: backend S3, ECR, OIDC, rol IAM + bootstrap del bucket
+- [x] **TASK-P-02** — Terraform: backend S3, ECR, OIDC, rol IAM + bootstrap del bucket
   - Tipo: impl
   - Depende de: —
   - REQ: REQ-P-003, REQ-P-004, REQ-P-005

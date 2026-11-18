@@ -13,7 +13,7 @@ describe("cliente HTTP", () => {
   });
 
   it("[REQ-F-007] errores de red se convierten en ApiError status 0", async () => {
-    const err = await http("/x", {}, async () => Promise.reject(new TypeError("net"))).catch((e: ApiError) => e);
+    const err = (await http("/x", {}, async () => Promise.reject(new TypeError("net"))).catch((e: unknown) => e)) as ApiError;
     expect(err).toBeInstanceOf(ApiError);
     expect(err.problem.status).toBe(0);
   });

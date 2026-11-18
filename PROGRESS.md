@@ -24,7 +24,9 @@ Fase 2 — **DESPLEGADO en AWS EKS** (2026-11-17 22:42).
 - Validado: `./init.sh --check` (0 errores), ambos `openapi.yaml` válidos (3.1 + reglas de la casa), `feature_list.json` 47 features con `passes: false`, autopruebas del harness en una copia (25/32; las 7 restantes eran rutas estilo Git Bash, ya normalizadas en los hooks).
 
 ## En curso
-- Nada (sin tarea activa).
+- Cierre formal (verify) de TASK-F-01, TASK-P-02, TASK-P-03; luego TASK-P-05 (CD).
+- Repo público creado: https://github.com/TheLuisP23/2doExamenParcial (variables AWS_ROLE_ARN, AWS_REGION, EKS_CLUSTER_NAME configuradas).
+- Pendiente: actualizar la trust policy del rol IAM a `repo:TheLuisP23/2doExamenParcial:ref:refs/heads/main` (el nombre del repo cambió).
 
 ## Siguiente
 1. **Humano**: revisar specs y responder las preguntas `[NEEDS CLARIFICATION]` (lista en el resumen de la sesión 1).
@@ -46,6 +48,8 @@ Fase 2 — **DESPLEGADO en AWS EKS** (2026-11-17 22:42).
 - `make` y `uv` no están instalados en la máquina local (Windows): usar `bash scripts/py.sh scripts/…` y `pip install uv`.
 
 ## Decisiones
+- Repo GitHub **público** `TheLuisP23/2doExamenParcial` (decisión del usuario, sustituye a `biblioteca-sdd-eks`).
+- Se añadió prueba de la plantilla Nginx (REQ-F-008) tras detectarla la trazabilidad.
 - Dominio asumido: Biblioteca — A = catálogo de libros, B = socios + préstamos (`book_id` opaco).
 - Kubernetes 1.36 en EKS (eksctl 0.231 acepta 1.31–1.37).
 - Node 22 LTS en el plan de B (Node 20 está EOL) — pendiente de confirmación (Q-B-5).
