@@ -30,6 +30,12 @@ variable "github_repository" {
   default = "TheLuisP23/2doExamenParcial"
 }
 
+# GitHub con "immutable subject" emite sub = repo:<owner>@<owner_id>/<repo>@<repo_id>:ref:...
+variable "github_repository_immutable" {
+  type    = string
+  default = "TheLuisP23@222698660/2doExamenParcial@1462279343"
+}
+
 variable "github_branch" {
   type    = string
   default = "main"
@@ -95,7 +101,10 @@ data "aws_iam_policy_document" "trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:ref:refs/heads/${var.github_branch}"]
+      values = [
+        "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}",
+        "repo:${var.github_repository_immutable}:ref:refs/heads/${var.github_branch}",
+      ]
     }
   }
 }

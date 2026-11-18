@@ -49,6 +49,8 @@ Fase 2 — **DESPLEGADO en AWS EKS** (2026-11-17 22:42).
 - `make` y `uv` no están instalados en la máquina local (Windows): usar `bash scripts/py.sh scripts/…` y `pip install uv`.
 
 ## Decisiones
+- El repo usa *immutable subject* de GitHub OIDC (`repo:TheLuisP23@222698660/2doExamenParcial@1462279343:ref:...`): la trust policy acepta ambos formatos (TASK-P-09).
+- CI fallaba porque `init.sh` no tenía bit de ejecución en git (commit desde Windows): pendiente `git update-index --chmod=+x`.
 - Repo GitHub **público** `TheLuisP23/2doExamenParcial` (decisión del usuario, sustituye a `biblioteca-sdd-eks`).
 - Se añadió prueba de la plantilla Nginx (REQ-F-008) tras detectarla la trazabilidad.
 - Dominio asumido: Biblioteca — A = catálogo de libros, B = socios + préstamos (`book_id` opaco).

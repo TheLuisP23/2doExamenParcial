@@ -60,3 +60,10 @@
   - Archivos: `deploy/k8s/**`, `tests/platform/test_k8s_manifests.py`
   - Hecho cuando: pruebas de políticas en verde; desde un pod de service-b no se alcanza postgres:5432; `make verify` verde.
 
+
+- [x] **TASK-P-09** — Fix: trust policy OIDC con sujeto inmutable de GitHub (`repo:owner@id/repo@id:ref:...`)
+  - Tipo: impl
+  - Depende de: TASK-P-05
+  - REQ: REQ-P-005
+  - Archivos: `deploy/terraform/main.tf`, `tests/platform/test_terraform_static.py`
+  - Hecho cuando: el workflow CD asume el rol; `make verify` verde.
