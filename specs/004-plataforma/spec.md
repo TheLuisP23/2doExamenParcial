@@ -55,7 +55,7 @@ Permisos: `ecr:GetAuthorizationToken` (`*`); `ecr:BatchCheckLayerAvailability`, 
 
 ### REQ-P-006 — ClusterConfig versionado (P1)
 `deploy/eksctl/cluster.yaml` (`eksctl.io/v1alpha5`): nombre `biblioteca-eks`, región `us-east-1`,
-Kubernetes **1.36** (vigente en EKS; eksctl 0.231 soporta 1.31–1.37), VPC gestionada por eksctl
+Kubernetes **1.37** (vigente en EKS; eksctl 0.231 soporta 1.31–1.37), VPC gestionada por eksctl
 (CIDR `10.10.0.0/16`, 2 AZ, NAT gateway único), `iam.withOIDC: true`, *managed node group*
 `ng-default` de **2 × t3.medium** (min 2, max 3, disco gp3 30 GiB, subredes privadas), addons
 `vpc-cni` (con `enableNetworkPolicy`), `coredns`, `kube-proxy`, `aws-ebs-csi-driver` (IRSA con la
@@ -141,11 +141,13 @@ Helm, Kustomize, Argo CD/Flux, Ingress/AWS Load Balancer Controller, TLS/ACM, Ro
 de nodos, HPA, RDS/DocumentDB, backups de BD, multi-entorno (staging/prod), observabilidad gestionada (CloudWatch Container Insights),
 External Secrets/Secrets Manager, firmado de imágenes.
 
-## Preguntas abiertas
-- [NEEDS CLARIFICATION] **Q-P-1**: `owner/repo` de GitHub para la *trust policy* del rol OIDC (variable `github_repository`).
-- [NEEDS CLARIFICATION] **Q-P-2**: nombre del bucket S3 de estado (debe ser único global). Propuesta: `biblioteca-tfstate-<account-id>`.
-- [NEEDS CLARIFICATION] **Q-P-3**: Kubernetes **1.36** elegido (1.37 también está disponible). ¿Alguna preferencia?
-- [NEEDS CLARIFICATION] **Q-P-4**: tipo de balanceador: por defecto el controlador de EKS crea un **Classic LB**; ¿prefieres NLB (anotación `aws-load-balancer-type: nlb`)?
-- [NEEDS CLARIFICATION] **Q-P-5**: ¿el CD debe exigir aprobación manual (GitHub Environment `production` con revisores)?
-- [NEEDS CLARIFICATION] **Q-P-6**: ¿el CD despliega siempre las 3 imágenes o solo las de componentes con cambios (filtros por ruta)? Hoy: las 3.
-- [NEEDS CLARIFICATION] **Q-P-7**: el AWS CLI local es 2.17.57; para `aws eks describe-cluster-versions` y funciones recientes conviene actualizarlo. ¿Se puede actualizar?
+## Preguntas abiertas (resueltas 2026-11-17)
+- Q-P-1: repositorio **`TheLuisP23/biblioteca-sdd-eks`** (trust policy: `repo:TheLuisP23/biblioteca-sdd-eks:ref:refs/heads/main`).
+- Q-P-2: bucket de estado `biblioteca-tfstate-<account-id>` (lo crea `scripts/tf-backend-bootstrap.sh`).
+- Q-P-3: Kubernetes **1.37** (coincide con el kubectl 1.37 instalado; eksctl 0.231 lo soporta).
+- Q-P-4: **Classic LB** por defecto (sin anotaciones; lo más rápido).
+- Q-P-5: CD **automático** en push a `main`, sin aprobación manual.
+- Q-P-6: el CD construye siempre las 3 imágenes.
+- Q-P-7: AWS CLI 2.17.57 suficiente para el alcance (no se actualiza).
+- Desviación de orden aceptada por tiempo: el clúster se crea primero sin access entry y la access entry del rol
+  de GitHub se añade tras `terraform apply` (`eksctl create accessentry`).

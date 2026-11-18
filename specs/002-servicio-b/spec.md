@@ -1,7 +1,7 @@
 # 002 · Servicio B — Socios y préstamos
 
 - **Estado**: Borrador para revisión · **Versión**: 0.1.0 · **Fecha**: 2026-11-17
-- **Stack**: Node.js · TypeScript · Express · MongoDB 7 · **Contrato**: [contracts/openapi.yaml](contracts/openapi.yaml)
+- **Stack**: Node.js 24 · TypeScript · Express · MongoDB 7 · **Contrato**: [contracts/openapi.yaml](contracts/openapi.yaml)
 - **Modelo de datos**: [data-model.md](data-model.md) · **Plan**: [plan.md](plan.md) · **Tareas**: [tasks.md](tasks.md)
 
 ## Propósito
@@ -115,10 +115,8 @@ Al iniciar, B crea (idempotente) los índices definidos en [data-model.md](data-
 - Autenticación de socios (el único actor es el bibliotecario).
 - Transacciones multi-documento / replica set de MongoDB.
 
-## Preguntas abiertas
-- [NEEDS CLARIFICATION] **Q-B-1**: límite de préstamos activos por socio — se asumió **3** (configurable). ¿Correcto?
-- [NEEDS CLARIFICATION] **Q-B-2**: plazo de préstamo — se asumió **14 días** por defecto y máximo 90. ¿Correcto?
-- [NEEDS CLARIFICATION] **Q-B-3**: ¿un mismo `book_id` puede estar prestado a varios socios a la vez? Hoy **sí** (A no tiene copias); solo se impide que el mismo socio lo duplique.
-- [NEEDS CLARIFICATION] **Q-B-4**: al borrar un socio, ¿se borran sus préstamos devueltos (hoy sí) o se conservan como histórico?
-- [NEEDS CLARIFICATION] **Q-B-5**: Node.js 20 llegó a fin de vida en abril de 2026. ¿Mantener Node 20 por requisito o usar Node 22/24 LTS? (El plan asume **Node 22 LTS** hasta confirmación.)
-- [NEEDS CLARIFICATION] **Q-B-6**: sin replica set no hay transacciones; la regla "máx. N préstamos activos" puede violarse con peticiones concurrentes. ¿Se acepta esa carrera en alcance académico?
+## Preguntas abiertas (resueltas 2026-11-17)
+- Q-B-1: máximo 3 préstamos activos (configurable). Q-B-2: 14 días por defecto, máximo 90.
+- Q-B-3: un `book_id` puede estar prestado a varios socios a la vez. Q-B-4: al borrar un socio se borran sus préstamos devueltos.
+- Q-B-5: **Node.js 24 LTS** (la versión instalada).
+- Q-B-6: se acepta la carrera de concurrencia en el límite de préstamos (alcance académico).

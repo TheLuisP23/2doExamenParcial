@@ -101,8 +101,8 @@ El esquema se gestiona con Alembic. Las migraciones se aplican antes de aceptar 
 - Autenticación/autorización.
 - Búsqueda full-text avanzada (relevancia, sinónimos).
 
-## Preguntas abiertas
-- [NEEDS CLARIFICATION] **Q-A-1**: ¿aceptar también ISBN-10 (convirtiéndolo a ISBN-13)? Hoy solo ISBN-13.
-- [NEEDS CLARIFICATION] **Q-A-2**: ¿`genre` debe ser una lista cerrada (enum) o texto libre? Hoy texto libre ≤ 64.
-- [NEEDS CLARIFICATION] **Q-A-3**: ¿debe A llevar `total_copies` por libro? Hoy no (ver Fuera de alcance).
-- [NEEDS CLARIFICATION] **Q-A-4**: al borrar un libro con préstamos activos en B no hay forma de saberlo (servicios independientes). ¿Se acepta, o el front debe advertir consultando B antes de borrar?
+## Preguntas abiertas (resueltas 2026-11-17)
+- Q-A-1: solo ISBN-13 (ISBN-10 fuera de alcance).
+- Q-A-2: `genre` texto libre ≤ 64.
+- Q-A-3: sin `total_copies`.
+- Q-A-4: se acepta borrar libros con préstamos activos en B; el front muestra "Libro no disponible".

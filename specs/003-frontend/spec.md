@@ -104,6 +104,6 @@ Etiquetas en todos los campos, foco visible, navegación por teclado y sin viola
 - SSR; despliegue en CDN/S3.
 - Lógica de negocio de préstamos en el cliente (las reglas las aplica B; el front solo muestra sus errores).
 
-## Preguntas abiertas
-- [NEEDS CLARIFICATION] **Q-F-1**: ¿hace falta una pantalla de detalle de socio con su historial de préstamos (P2)? Hoy se usa el filtro por socio en `/prestamos`.
-- [NEEDS CLARIFICATION] **Q-F-2**: ¿alguna guía visual/identidad institucional que seguir?
+## Preguntas abiertas (resueltas 2026-11-17)
+- Q-F-1: sin pantalla de detalle de socio (se usa el filtro en `/prestamos`).
+- Q-F-2: sin guía visual; estilo simple.

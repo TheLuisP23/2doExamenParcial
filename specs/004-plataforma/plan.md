@@ -38,7 +38,7 @@ Tag = SHA de git (inmutable en ECR). Nunca `latest`.
 ```yaml
 apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
-metadata: {name: biblioteca-eks, region: us-east-1, version: "1.36", tags: {Project: biblioteca}}
+metadata: {name: biblioteca-eks, region: us-east-1, version: "1.37", tags: {Project: biblioteca}}
 availabilityZones: [us-east-1a, us-east-1b]
 vpc: {cidr: 10.10.0.0/16, nat: {gateway: Single}, clusterEndpoints: {publicAccess: true, privateAccess: true}}
 iam: {withOIDC: true}

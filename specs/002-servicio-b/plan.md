@@ -3,7 +3,7 @@
 ## Stack
 | Pieza | Elección | Motivo |
 |---|---|---|
-| Runtime | Node.js **22 LTS** (pendiente Q-B-5; el enunciado dice 20, que está EOL) | soporte de seguridad |
+| Runtime | Node.js **24 LTS** (Q-B-5 resuelta) | soporte de seguridad |
 | Lenguaje | TypeScript 5.x, `strict: true`, ESM | NFR-B-002 |
 | Web | Express 5 | requisito |
 | Validación | `zod` (esquemas `.strict()`), errores → problem+json | REQ-B-007 |

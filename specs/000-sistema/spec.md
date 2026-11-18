@@ -94,7 +94,7 @@ siempre con el esquema `Health` de REQ-SYS-003 (también el `503`), porque lo co
 - Observabilidad avanzada (tracing distribuido, métricas Prometheus, dashboards).
 
 ## Preguntas abiertas
-- [NEEDS CLARIFICATION] **Q-SYS-1**: el dominio no venía fijado en el enunciado (`{{DOMINIO}}`);
-  se asumió "Biblioteca: libros (A) y socios/préstamos (B)". ¿Lo confirmas?
-- [NEEDS CLARIFICATION] **Q-SYS-2**: ¿se requiere autenticación (aunque sea básica en Nginx) para
-  exponer el LB público? Hoy está fuera de alcance.
+- **Resuelto 2026-11-17**: sí, dominio Biblioteca. ~~**Q-SYS-1**: el dominio no venía fijado en el enunciado (`{{DOMINIO}}`);
+  se asumió "Biblioteca: libros (A) y socios/préstamos (B)". ¿Lo confirmas?~~
+- **Resuelto 2026-11-17**: sin autenticación; HTTP y acceso por IP/DNS del LB. ~~**Q-SYS-2**: ¿se requiere autenticación (aunque sea básica en Nginx) para
+  exponer el LB público? Hoy está fuera de alcance.~~
