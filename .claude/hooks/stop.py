@@ -46,10 +46,8 @@ def main() -> None:
     dirty = [f for f in changed_files() if not f.startswith(".harness/")]
     last = read_json(LAST_VERIFY) or {}
     if dirty and not (last.get("ok") and last.get("fingerprint") == worktree_fingerprint()):
-        if shutil.which("make"):
-            cmd = ["make", "verify"]
-        else:
-            cmd = ["bash", str(ROOT / "scripts/py.sh"), str(ROOT / "scripts/verify.py")]
+        # En Windows, "bash" desde Python puede resolver al bash de WSL: usar este mismo intérprete.
+        cmd = ["make", "verify"] if shutil.which("make") else [sys.executable, str(ROOT / "scripts/verify.py")]
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
         if r.returncode != 0:
             tail = "\n".join((r.stdout + r.stderr).strip().splitlines()[-30:])
