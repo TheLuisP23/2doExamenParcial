@@ -1,0 +1,8 @@
+# Ruff para el código del harness (scripts/, .claude/hooks/, tests/ transversales).
+# El servicio A tiene su propia configuración en services/service-a/pyproject.toml.
+line-length = 130
+target-version = "py312"
+extend-exclude = ["services/service-a"]
+
+[lint]
+select = ["E", "F", "W", "I", "B"]

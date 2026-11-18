@@ -1,0 +1,68 @@
+# Instalado por ./init.sh (pre-commit y commit-msg). Ejecutar a mano: pre-commit run --all-files
+default_install_hook_types: [pre-commit, commit-msg]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.md$
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: terraform-fmt
+        name: terraform fmt
+        entry: terraform fmt -check -recursive deploy/terraform
+        language: system
+        files: \.(tf|tfvars|hcl)$
+        pass_filenames: false
+      - id: prettier-node
+        name: prettier (service-b, frontend)
+        entry: bash -c 'for d in services/service-b frontend; do [ -d "$d/node_modules" ] && (cd "$d" && npx --no-install prettier --check .) || true; done'
+        language: system
+        files: ^(services/service-b|frontend)/.*\.(ts|tsx|js|json|css)$
+        pass_filenames: false
+      - id: check-feature-list
+        name: feature_list.json (esquema + append-only)
+        entry: bash scripts/py.sh scripts/check_feature_list.py
+        language: system
+        files: ^(feature_list\.json|specs/.*/spec\.md)$
+        pass_filenames: false
+      - id: check-contracts
+        name: contratos OpenAPI
+        entry: bash scripts/py.sh scripts/check_contracts.py
+        language: system
+        files: ^specs/.*/contracts/.*\.ya?ml$
+        pass_filenames: false
+      - id: task-lint
+        name: formato de tasks.md
+        entry: bash scripts/py.sh scripts/task.py lint
+        language: system
+        files: ^specs/.*\.md$
+        pass_filenames: false
+      - id: conventional-commit
+        name: Conventional Commits
+        entry: bash scripts/py.sh scripts/check_commit_msg.py
+        language: system
+        stages: [commit-msg]

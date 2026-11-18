@@ -1,0 +1,796 @@
+{
+  "schema_version": 1,
+  "rules": [
+    "Append-only: nunca borres, reordenes ni reescribas una entrada (id, component, priority, req_ids, description y steps son inmutables).",
+    "Solo 'passes', 'verified_at' y 'verified_commit' cambian, y solo mediante `make feature-pass ID=…` tras verificar.",
+    "Toda REQ-* de specs/*/spec.md debe estar en al menos una feature (scripts/check_feature_list.py).",
+    "Las features nuevas se añaden al final con passes=false."
+  ],
+  "features": [
+    {
+      "id": "FEAT-SYS-01",
+      "component": "sistema",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-SYS-001"
+      ],
+      "description": "Origen único: Nginx enruta /api/a a A y /api/b a B quitando el prefijo, sin cabeceras CORS",
+      "steps": [
+        "./init.sh --up",
+        "curl -si http://localhost:8080/api/a/health/live → 200 emitido por A",
+        "curl -si http://localhost:8080/api/b/health/live → 200 emitido por B",
+        "Ninguna respuesta /api/* contiene Access-Control-Allow-Origin",
+        "make e2e: frontend/e2e/system.spec.ts en verde"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-SYS-02",
+      "component": "sistema",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-SYS-002"
+      ],
+      "description": "Independencia de servicios: sin imports, URLs, variables ni BD compartidas entre A y B",
+      "steps": [
+        "pytest tests/system/test_independence.py en verde",
+        "No hay referencias cruzadas services/service-a ↔ services/service-b",
+        "Cada BD tiene StatefulSet, Secret y Service propios en deploy/k8s"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-SYS-03",
+      "component": "sistema",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-SYS-003"
+      ],
+      "description": "Endpoints /health/live y /health/ready uniformes en A, B y frontend",
+      "steps": [
+        "Ambos openapi.yaml declaran /health/live y /health/ready (check_contracts)",
+        "Con la BD detenida, /health/ready → 503 y /health/live → 200",
+        "make smoke URL=… verifica los ready vía Nginx"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-SYS-04",
+      "component": "sistema",
+      "priority": "P2",
+      "req_ids": [
+        "REQ-SYS-004"
+      ],
+      "description": "Logs JSON con request_id propagado desde Nginx (X-Request-ID)",
+      "steps": [
+        "Petición sin X-Request-ID devuelve la cabecera",
+        "docker compose logs service-a muestra JSON con el mismo request_id",
+        "Ídem para service-b"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-SYS-05",
+      "component": "sistema",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-SYS-005"
+      ],
+      "description": "Configuración solo por variables de entorno con fallo rápido si falta una obligatoria",
+      "steps": [
+        "Arrancar A sin SERVICE_A_DATABASE_URL termina con código ≠ 0 y log claro",
+        "Arrancar B sin SERVICE_B_MONGO_URI termina con código ≠ 0",
+        "Toda variable usada está documentada en .env.example"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-SYS-06",
+      "component": "sistema",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-SYS-006"
+      ],
+      "description": "Errores 4xx/5xx de A y B en application/problem+json (RFC 9457)",
+      "steps": [
+        "GET de un id inexistente en A y en B → 404 application/problem+json con type/title/status",
+        "Validación fallida → 422 con errors[]",
+        "check_contracts confirma problem+json en todas las respuestas de error"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-A-01",
+      "component": "servicio-a",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-A-008",
+        "REQ-A-009"
+      ],
+      "description": "Servicio A: liveness sin dependencias y readiness con comprobación de PostgreSQL",
+      "steps": [
+        "pytest tests/unit/test_health.py y tests/integration/test_health_db.py en verde",
+        "GET /health/ready con BD caída → 503 {status: unavailable}"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-A-02",
+      "component": "servicio-a",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-A-012"
+      ],
+      "description": "Servicio A: migraciones Alembic idempotentes aplicadas antes de servir",
+      "steps": [
+        "pytest tests/integration/test_migrations.py (upgrade/downgrade) en verde",
+        "Arrancar dos veces el contenedor contra la misma BD no falla"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-A-03",
+      "component": "servicio-a",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-A-001",
+        "REQ-A-006",
+        "REQ-A-007"
+      ],
+      "description": "Servicio A: crear libro con normalización/validación de ISBN-13, validación de campos e ISBN único",
+      "steps": [
+        "POST /books válido → 201 + Location; ISBN con guiones se guarda normalizado",
+        "ISBN con dígito de control erróneo → 422 con errors[].field=body.isbn",
+        "ISBN duplicado → 409 /problems/duplicate-isbn",
+        "Pruebas de contrato de createBook en verde"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-A-04",
+      "component": "servicio-a",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-A-002"
+      ],
+      "description": "Servicio A: obtener libro por id (404 si no existe, 422 si el id no es UUID)",
+      "steps": [
+        "GET /books/{id} existente → 200",
+        "UUID inexistente → 404 problem+json",
+        "id no UUID → 422"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-A-05",
+      "component": "servicio-a",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-A-003"
+      ],
+      "description": "Servicio A: listado paginado estable (limit/offset, máx. 100)",
+      "steps": [
+        "Con 25 libros, limit=10&offset=20 → 5 items y total=25",
+        "limit=101 → 422"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-A-06",
+      "component": "servicio-a",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-A-004"
+      ],
+      "description": "Servicio A: reemplazar libro (PUT) actualizando updated_at",
+      "steps": [
+        "PUT válido → 200 con nuevos valores y updated_at mayor",
+        "PUT a id inexistente → 404"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-A-07",
+      "component": "servicio-a",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-A-005"
+      ],
+      "description": "Servicio A: eliminar libro (204) y 404 posterior",
+      "steps": [
+        "DELETE existente → 204 y GET posterior → 404",
+        "DELETE inexistente → 404"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-A-08",
+      "component": "servicio-a",
+      "priority": "P2",
+      "req_ids": [
+        "REQ-A-010"
+      ],
+      "description": "Servicio A: búsqueda q en título/autor sin mayúsculas ni acentos y filtro por género",
+      "steps": [
+        "q=garcia encuentra «García Márquez»",
+        "genre=Novela filtra sin distinguir mayúsculas",
+        "Combinable con paginación"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-A-09",
+      "component": "servicio-a",
+      "priority": "P3",
+      "req_ids": [
+        "REQ-A-011"
+      ],
+      "description": "Servicio A: ordenamiento por título, autor o fecha de alta",
+      "steps": [
+        "sort=title devuelve orden alfabético",
+        "sort=precio → 422"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-B-01",
+      "component": "servicio-b",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-B-013",
+        "REQ-B-014"
+      ],
+      "description": "Servicio B: liveness sin dependencias y readiness con ping a MongoDB",
+      "steps": [
+        "vitest tests/unit/health.test.ts y tests/integration/health-mongo.test.ts en verde",
+        "Con Mongo caído /health/ready → 503"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-B-02",
+      "component": "servicio-b",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-B-015"
+      ],
+      "description": "Servicio B: índices de MongoDB creados de forma idempotente al arrancar",
+      "steps": [
+        "vitest tests/integration/indexes.test.ts en verde",
+        "Existen uq_members_email y uq_loans_member_book_open tras arrancar"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-B-03",
+      "component": "servicio-b",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-B-001",
+        "REQ-B-006",
+        "REQ-B-007"
+      ],
+      "description": "Servicio B: crear socio con email normalizado y único y validación de campos",
+      "steps": [
+        "POST /members → 201, status active, email en minúsculas",
+        "Email duplicado (distinto en mayúsculas) → 409 duplicate-email",
+        "Email inválido → 422 con errors[].field=body.email"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-B-04",
+      "component": "servicio-b",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-B-002",
+        "REQ-B-003"
+      ],
+      "description": "Servicio B: obtener socio (con active_loans) y listar con paginación, filtro de estado y búsqueda",
+      "steps": [
+        "GET /members/{id} → 200 con active_loans",
+        "status=suspended filtra correctamente y total coincide",
+        "id inexistente → 404"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-B-05",
+      "component": "servicio-b",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-B-004"
+      ],
+      "description": "Servicio B: reemplazar socio, incluida la suspensión",
+      "steps": [
+        "PUT con status suspended → 200",
+        "El socio suspendido no puede tomar préstamos (409 member-not-eligible)"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-B-06",
+      "component": "servicio-b",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-B-005"
+      ],
+      "description": "Servicio B: eliminar socio sin préstamos activos (409 si los tiene)",
+      "steps": [
+        "Socio con préstamo activo → 409 member-has-active-loans",
+        "Socio sin activos → 204 y sus préstamos devueltos se eliminan"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-B-07",
+      "component": "servicio-b",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-B-008"
+      ],
+      "description": "Servicio B: crear préstamo aplicando elegibilidad, límite de activos, fecha por defecto y no duplicado",
+      "steps": [
+        "Socio activo sin due_date → 201 con due_date = hoy + 14",
+        "4.º préstamo activo → 409 loan-limit-reached",
+        "Socio inexistente → 422 member-not-found; suspendido → 409 member-not-eligible",
+        "Mismo libro activo dos veces → 409 duplicate-active-loan"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-B-08",
+      "component": "servicio-b",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-B-009",
+        "REQ-B-010"
+      ],
+      "description": "Servicio B: listar préstamos con filtros por socio, libro y estado, y obtener uno",
+      "steps": [
+        "Filtro member_id devuelve solo los del socio",
+        "GET /loans/{id} inexistente → 404"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-B-09",
+      "component": "servicio-b",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-B-011"
+      ],
+      "description": "Servicio B: registrar devolución (409 si ya estaba devuelto)",
+      "steps": [
+        "POST /loans/{id}/return → 200 con returned_at",
+        "Segunda devolución → 409 loan-already-returned"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-B-10",
+      "component": "servicio-b",
+      "priority": "P2",
+      "req_ids": [
+        "REQ-B-012"
+      ],
+      "description": "Servicio B: estado overdue derivado de due_date sin devolver",
+      "steps": [
+        "Con reloj falso, préstamo con due_date de ayer → status overdue",
+        "status=overdue filtra solo vencidos no devueltos"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-F-01",
+      "component": "frontend",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-F-008",
+        "REQ-F-009"
+      ],
+      "description": "Frontend: Nginx con fallback de SPA, proxy con strip de prefijo, health, cabeceras y upstreams por entorno",
+      "steps": [
+        "vitest tests/nginx en verde (Testcontainers)",
+        "GET /socios/123/editar → index.html",
+        "El bundle no contiene hosts de servicios"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-F-02",
+      "component": "frontend",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-F-001"
+      ],
+      "description": "Frontend: catálogo paginado con búsqueda con debounce",
+      "steps": [
+        "Unit tests de books-list en verde",
+        "E2E books.spec.ts: la búsqueda «borges» muestra solo coincidencias"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-F-03",
+      "component": "frontend",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-F-002",
+        "REQ-F-003"
+      ],
+      "description": "Frontend: alta/edición de libro con validación en cliente y baja con confirmación",
+      "steps": [
+        "ISBN inválido muestra error bajo el campo y no envía",
+        "409 duplicate-isbn se muestra en el campo ISBN",
+        "Eliminar pide confirmación antes del DELETE"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-F-04",
+      "component": "frontend",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-F-004"
+      ],
+      "description": "Frontend: gestión de socios (listado, alta, edición/suspensión, baja)",
+      "steps": [
+        "E2E members.spec.ts en verde",
+        "Borrar socio con préstamos activos muestra el mensaje del 409"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-F-05",
+      "component": "frontend",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-F-005"
+      ],
+      "description": "Frontend: nuevo préstamo eligiendo socio activo (B) y libro (A)",
+      "steps": [
+        "E2E loans.spec.ts crea un préstamo",
+        "409 loan-limit-reached muestra el mensaje en español"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-F-06",
+      "component": "frontend",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-F-006"
+      ],
+      "description": "Frontend: listado de préstamos con título resuelto desde A, filtros y devolución; degradación si A falla",
+      "steps": [
+        "Devolver cambia la fila a «Devuelto» sin recargar",
+        "Libro borrado en A → «Libro no disponible»",
+        "A caído → título «—» y la lista se muestra"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-F-07",
+      "component": "frontend",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-F-007"
+      ],
+      "description": "Frontend: manejo de errores problem+json, de validación y de red con reintento",
+      "steps": [
+        "Unit tests de http.ts en verde",
+        "B devolviendo 503 → banner con botón Reintentar"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-F-08",
+      "component": "frontend",
+      "priority": "P3",
+      "req_ids": [
+        "REQ-F-010"
+      ],
+      "description": "Frontend: accesibilidad básica sin violaciones axe serias o críticas",
+      "steps": [
+        "E2E a11y.spec.ts en verde en todas las pantallas principales"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-01",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-001"
+      ],
+      "description": "Imágenes Docker multi-stage, no-root y con base fijada para A, B y frontend",
+      "steps": [
+        "pytest tests/platform/test_dockerfiles.py en verde",
+        "docker run --rm <img> id -u ≠ 0 para las 3 imágenes"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-02",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-002"
+      ],
+      "description": "docker compose levanta el stack completo con healthchecks",
+      "steps": [
+        "./init.sh --up deja los 5 servicios healthy",
+        "http://localhost:8080/api/a/health/ready → 200"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-03",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-003"
+      ],
+      "description": "Terraform con estado remoto en S3, cifrado y bloqueo nativo (use_lockfile)",
+      "steps": [
+        "pytest tests/platform/test_terraform_static.py en verde",
+        "terraform init con backend.hcl funciona contra el bucket"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-04",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-004"
+      ],
+      "description": "Tres repositorios ECR inmutables con scan on push y lifecycle",
+      "steps": [
+        "terraform test (ecr.tftest.hcl) en verde",
+        "aws ecr describe-repositories lista los 3 repos tras apply"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-05",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-005"
+      ],
+      "description": "Proveedor OIDC de GitHub y rol IAM de mínimo privilegio restringido a main",
+      "steps": [
+        "terraform test (iam.tftest.hcl) en verde",
+        "El workflow CD asume el rol sin access keys"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-06",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-006"
+      ],
+      "description": "ClusterConfig de eksctl versionado (1.36, 2×t3.medium, addons, access entry)",
+      "steps": [
+        "pytest tests/platform/test_eksctl_config.py en verde",
+        "eksctl create cluster --dry-run sin error"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-07",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-007",
+        "REQ-P-008",
+        "REQ-P-009"
+      ],
+      "description": "StorageClass gp3 y StatefulSets de PostgreSQL y MongoDB con PVC",
+      "steps": [
+        "kubeconform y tests/platform/test_k8s_manifests.py en verde",
+        "En EKS los PVC quedan Bound y los pods Ready"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-08",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-010",
+        "REQ-P-011",
+        "REQ-P-017"
+      ],
+      "description": "Deployments de A, B y front con probes, requests/limits y securityContext; Services y namespace etiquetados",
+      "steps": [
+        "test_k8s_manifests.py: requests/limits y probes en todos los contenedores",
+        "Un único Service LoadBalancer (frontend 80→8080)",
+        "kubectl rollout status OK en los 3 Deployments"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-09",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-012"
+      ],
+      "description": "ConfigMaps y Secrets sin valores reales en el repo; script idempotente de creación",
+      "steps": [
+        "No hay kind: Secret con datos reales fuera de *.example.yaml",
+        "scripts/k8s-secrets.sh ejecutado dos veces no cambia las contraseñas"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-10",
+      "component": "plataforma",
+      "priority": "P2",
+      "req_ids": [
+        "REQ-P-018"
+      ],
+      "description": "NetworkPolicies: default deny y cada BD accesible solo por su servicio",
+      "steps": [
+        "test_k8s_manifests.py valida las políticas",
+        "Desde un pod de service-b no se alcanza postgres:5432"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-11",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-013"
+      ],
+      "description": "Workflow CI en PR ejecuta make verify y gitleaks sin credenciales AWS",
+      "steps": [
+        "tests/platform/test_workflows.py en verde",
+        "Un PR muestra el job verify en verde"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-12",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-014"
+      ],
+      "description": "Workflow CD en main: OIDC, build/push ECR con tag SHA, apply, rollout y smoke",
+      "steps": [
+        "tests/platform/test_workflows.py en verde",
+        "Un push a main despliega y el smoke pasa"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-13",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-015"
+      ],
+      "description": "Smoke tests post-deploy contra el DNS del LoadBalancer",
+      "steps": [
+        "SMOKE_BASE_URL=http://localhost:8080 pytest tests/smoke en verde",
+        "make smoke URL=http://<lb-dns> en verde"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    },
+    {
+      "id": "FEAT-P-14",
+      "component": "plataforma",
+      "priority": "P1",
+      "req_ids": [
+        "REQ-P-016"
+      ],
+      "description": "Aprovisionamiento y destrucción ordenados (terraform → eksctl → kubectl y a la inversa)",
+      "steps": [
+        "tests/platform/test_provisioning.py en verde",
+        "make infra-up / make infra-down completos con confirmación humana; sin ELB huérfano"
+      ],
+      "passes": false,
+      "verified_at": null,
+      "verified_commit": null
+    }
+  ]
+}

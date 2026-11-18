@@ -1,0 +1,521 @@
+openapi: 3.1.0
+info:
+  title: Servicio B — Socios y préstamos
+  version: 0.1.0
+  description: |
+    API de socios (entidad principal) y préstamos. Fuente de verdad: este archivo (contrato primero).
+    Requisitos: specs/002-servicio-b/spec.md (REQ-B-*). Errores en application/problem+json (RFC 9457).
+    `book_id` es un identificador opaco del servicio A: B nunca lo valida contra A.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: /api/b
+    description: A través del proxy Nginx del frontend (prefijo eliminado por el proxy)
+  - url: http://localhost:3000
+    description: Acceso directo en desarrollo local
+tags:
+  - name: members
+  - name: loans
+  - name: health
+paths:
+  /health/live:
+    get:
+      tags: [health]
+      operationId: getLiveness
+      summary: Liveness (no consulta dependencias) — REQ-B-013
+      responses:
+        "200":
+          description: Proceso vivo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /health/ready:
+    get:
+      tags: [health]
+      operationId: getReadiness
+      summary: Readiness (ping a MongoDB) — REQ-B-014
+      responses:
+        "200":
+          description: Listo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+              example:
+                status: ok
+                checks:
+                  database: ok
+        "503":
+          description: MongoDB no disponible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+              example:
+                status: unavailable
+                checks:
+                  database: error
+  /members:
+    get:
+      tags: [members]
+      operationId: listMembers
+      summary: Listar socios — REQ-B-003
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/MemberStatus"
+        - name: q
+          in: query
+          required: false
+          description: Subcadena en nombre o email (sin distinguir mayúsculas)
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+      responses:
+        "200":
+          description: Página de socios
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberPage"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    post:
+      tags: [members]
+      operationId: createMember
+      summary: Crear socio — REQ-B-001, REQ-B-006, REQ-B-007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberCreate"
+            example:
+              full_name: Ana Pérez
+              email: Ana@Example.com
+              phone: "+57 300 123 4567"
+      responses:
+        "201":
+          description: Socio creado
+          headers:
+            Location:
+              schema:
+                type: string
+                example: /members/6f1c2b9e-8a7d-4c1e-9b0a-1d2e3f4a5b6c
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /members/{memberId}:
+    parameters:
+      - $ref: "#/components/parameters/MemberId"
+    get:
+      tags: [members]
+      operationId: getMember
+      summary: Obtener socio — REQ-B-002
+      responses:
+        "200":
+          description: Socio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    put:
+      tags: [members]
+      operationId: replaceMember
+      summary: Reemplazar socio — REQ-B-004, REQ-B-006, REQ-B-007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberReplace"
+      responses:
+        "200":
+          description: Socio actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags: [members]
+      operationId: deleteMember
+      summary: Eliminar socio (409 si tiene préstamos activos) — REQ-B-005
+      responses:
+        "204":
+          description: Eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /loans:
+    get:
+      tags: [loans]
+      operationId: listLoans
+      summary: Listar préstamos — REQ-B-009, REQ-B-012
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - name: member_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: book_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/LoanStatus"
+      responses:
+        "200":
+          description: Página de préstamos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanPage"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    post:
+      tags: [loans]
+      operationId: createLoan
+      summary: Crear préstamo — REQ-B-008
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoanCreate"
+            example:
+              member_id: 6f1c2b9e-8a7d-4c1e-9b0a-1d2e3f4a5b6c
+              book_id: 3f1c2b9e-8a7d-4c1e-9b0a-1d2e3f4a5b6c
+      responses:
+        "201":
+          description: Préstamo creado
+          headers:
+            Location:
+              schema:
+                type: string
+                example: /loans/0b8f8a6e-2c3d-4e5f-8a9b-0c1d2e3f4a5b
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /loans/{loanId}:
+    parameters:
+      - $ref: "#/components/parameters/LoanId"
+    get:
+      tags: [loans]
+      operationId: getLoan
+      summary: Obtener préstamo — REQ-B-010
+      responses:
+        "200":
+          description: Préstamo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /loans/{loanId}/return:
+    parameters:
+      - $ref: "#/components/parameters/LoanId"
+    post:
+      tags: [loans]
+      operationId: returnLoan
+      summary: Registrar devolución — REQ-B-011
+      responses:
+        "200":
+          description: Préstamo devuelto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+components:
+  parameters:
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    LoanId:
+      name: loanId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+  schemas:
+    MemberStatus:
+      type: string
+      enum: [active, suspended]
+    LoanStatus:
+      type: string
+      enum: [active, returned, overdue]
+    MemberCreate:
+      type: object
+      additionalProperties: false
+      required: [full_name, email]
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: [string, "null"]
+          pattern: "^\\+?[0-9 ()-]{7,20}$"
+    MemberReplace:
+      type: object
+      additionalProperties: false
+      required: [full_name, email, phone, status]
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: [string, "null"]
+          pattern: "^\\+?[0-9 ()-]{7,20}$"
+        status:
+          $ref: "#/components/schemas/MemberStatus"
+    Member:
+      type: object
+      additionalProperties: false
+      required: [id, full_name, email, phone, status, active_loans, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: [string, "null"]
+        status:
+          $ref: "#/components/schemas/MemberStatus"
+        active_loans:
+          type: integer
+          minimum: 0
+          description: Préstamos no devueltos (incluye vencidos)
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    MemberPage:
+      type: object
+      additionalProperties: false
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Member"
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+        offset:
+          type: integer
+    LoanCreate:
+      type: object
+      additionalProperties: false
+      required: [member_id, book_id]
+      properties:
+        member_id:
+          type: string
+          format: uuid
+        book_id:
+          type: string
+          format: uuid
+          description: Id de libro del servicio A (opaco)
+        due_date:
+          type: string
+          format: date
+          description: Opcional; por defecto hoy + 14 días. Debe ser > hoy y ≤ hoy + 90.
+    Loan:
+      type: object
+      additionalProperties: false
+      required: [id, member_id, book_id, loaned_at, due_date, returned_at, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        member_id:
+          type: string
+          format: uuid
+        book_id:
+          type: string
+          format: uuid
+        loaned_at:
+          type: string
+          format: date-time
+        due_date:
+          type: string
+          format: date
+        returned_at:
+          type: [string, "null"]
+          format: date-time
+        status:
+          $ref: "#/components/schemas/LoanStatus"
+    LoanPage:
+      type: object
+      additionalProperties: false
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Loan"
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+        offset:
+          type: integer
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable]
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [ok, error]
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          description: |
+            about:blank o /problems/<slug>: not-found, validation-error, duplicate-email,
+            member-has-active-loans, member-not-found, member-not-eligible, loan-limit-reached,
+            duplicate-active-loan, loan-already-returned
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+    ValidationProblem:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+        - type: object
+          required: [errors]
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                required: [field, message]
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+  responses:
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Conflict:
+      description: Conflicto con una regla de negocio o unicidad
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: /problems/loan-limit-reached
+            title: Conflict
+            status: 409
+            detail: Member already has 3 active loans
+    ValidationError:
+      description: Entrada inválida (incluye member-not-found al crear préstamo)
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ValidationProblem"

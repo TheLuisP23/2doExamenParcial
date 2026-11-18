@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://biblioteca.local/schemas/feature_list.schema.json",
+  "title": "feature_list.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "rules", "features"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "rules": { "type": "array", "items": { "type": "string" } },
+    "features": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "component", "priority", "req_ids", "description", "steps", "passes", "verified_at", "verified_commit"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^FEAT-(SYS|A|B|F|P)-\\d{2}$" },
+          "component": { "enum": ["sistema", "servicio-a", "servicio-b", "frontend", "plataforma"] },
+          "priority": { "enum": ["P1", "P2", "P3"] },
+          "req_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^REQ-(SYS|A|B|F|P)-\\d{3}$" }
+          },
+          "description": { "type": "string", "minLength": 10 },
+          "steps": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 5 } },
+          "passes": { "type": "boolean" },
+          "verified_at": { "type": ["string", "null"], "format": "date-time" },
+          "verified_commit": { "type": ["string", "null"], "pattern": "^[0-9a-f]{7,40}$" }
+        },
+        "if": { "properties": { "passes": { "const": true } } },
+        "then": { "properties": { "verified_at": { "type": "string" }, "verified_commit": { "type": "string" } } }
+      }
+    }
+  }
+}

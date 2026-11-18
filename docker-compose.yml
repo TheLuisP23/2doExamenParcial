@@ -1,0 +1,102 @@
+# Entorno local completo (REQ-P-002). Variables desde .env (copia de .env.example; no se versiona).
+# Misma imagen que en EKS; solo cambian las variables (constitución V.4).
+# Los servicios de aplicación se construyen cuando existan sus Dockerfiles (TASK-P-02);
+# ./init.sh --up levanta solo lo que ya puede construirse.
+name: biblioteca
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?define POSTGRES_DB en .env}
+      POSTGRES_USER: ${POSTGRES_USER:?define POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [net-a]
+
+  mongo:
+    image: mongo:7.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?define MONGO_INITDB_ROOT_USERNAME en .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?define MONGO_INITDB_ROOT_PASSWORD en .env}
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [net-b]
+
+  service-a:
+    build: ./services/service-a
+    environment:
+      SERVICE_A_PORT: ${SERVICE_A_PORT:-8000}
+      SERVICE_A_DATABASE_URL: ${SERVICE_A_DATABASE_URL:?define SERVICE_A_DATABASE_URL en .env}
+      SERVICE_A_LOG_LEVEL: ${SERVICE_A_LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000" # solo depuración local; en EKS es ClusterIP
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [net-a, edge]
+
+  service-b:
+    build: ./services/service-b
+    environment:
+      SERVICE_B_PORT: ${SERVICE_B_PORT:-3000}
+      SERVICE_B_MONGO_URI: ${SERVICE_B_MONGO_URI:?define SERVICE_B_MONGO_URI en .env}
+      SERVICE_B_LOG_LEVEL: ${SERVICE_B_LOG_LEVEL:-info}
+      SERVICE_B_MAX_ACTIVE_LOANS: ${SERVICE_B_MAX_ACTIVE_LOANS:-3}
+      SERVICE_B_DEFAULT_LOAN_DAYS: ${SERVICE_B_DEFAULT_LOAN_DAYS:-14}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "3000:3000" # solo depuración local
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [net-b, edge]
+
+  frontend:
+    build: ./frontend
+    environment:
+      SERVICE_A_UPSTREAM: ${SERVICE_A_UPSTREAM:-http://service-a:8000}
+      SERVICE_B_UPSTREAM: ${SERVICE_B_UPSTREAM:-http://service-b:3000}
+    depends_on:
+      service-a:
+        condition: service_healthy
+      service-b:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [edge]
+
+# Redes separadas: A no ve Mongo, B no ve Postgres (espejo local de las NetworkPolicies, REQ-SYS-002).
+networks:
+  net-a: {}
+  net-b: {}
+  edge: {}
+
+volumes:
+  pgdata: {}
+  mongodata: {}

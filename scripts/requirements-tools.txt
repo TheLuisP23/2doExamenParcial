@@ -1,0 +1,9 @@
+# Herramientas del harness (no de los servicios). Se instalan en .venv-tools/ con ./init.sh
+jsonschema>=4.23,<5
+PyYAML>=6.0,<7
+openapi-spec-validator>=0.7,<0.8
+pytest>=8.3,<9
+httpx>=0.28,<1
+python-hcl2>=5,<8
+ruff>=0.8,<1
+pre-commit>=4,<5

@@ -1,0 +1,372 @@
+openapi: 3.1.0
+info:
+  title: Servicio A — Catálogo de libros
+  version: 0.1.0
+  description: |
+    API del catálogo de libros. Fuente de verdad: este archivo (contrato primero).
+    Requisitos: specs/001-servicio-a/spec.md (REQ-A-*). Errores en application/problem+json (RFC 9457).
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: /api/a
+    description: A través del proxy Nginx del frontend (prefijo eliminado por el proxy)
+  - url: http://localhost:8000
+    description: Acceso directo en desarrollo local
+tags:
+  - name: books
+    description: Catálogo de libros
+  - name: health
+    description: Salud del servicio
+paths:
+  /health/live:
+    get:
+      tags: [health]
+      operationId: getLiveness
+      summary: Liveness (no consulta dependencias) — REQ-A-008
+      responses:
+        "200":
+          description: Proceso vivo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+              example:
+                status: ok
+  /health/ready:
+    get:
+      tags: [health]
+      operationId: getReadiness
+      summary: Readiness (comprueba PostgreSQL) — REQ-A-009
+      responses:
+        "200":
+          description: Listo para recibir tráfico
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+              example:
+                status: ok
+                checks:
+                  database: ok
+        "503":
+          description: Alguna dependencia no está disponible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+              example:
+                status: unavailable
+                checks:
+                  database: error
+  /books:
+    get:
+      tags: [books]
+      operationId: listBooks
+      summary: Listar libros paginado, con búsqueda y orden — REQ-A-003, REQ-A-010, REQ-A-011
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - name: q
+          in: query
+          required: false
+          description: Subcadena a buscar en título o autor (sin distinguir mayúsculas ni acentos)
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - name: genre
+          in: query
+          required: false
+          description: Género exacto (sin distinguir mayúsculas)
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [title, -title, author, -author, created_at, -created_at]
+            default: -created_at
+      responses:
+        "200":
+          description: Página de libros
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookPage"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    post:
+      tags: [books]
+      operationId: createBook
+      summary: Crear libro — REQ-A-001, REQ-A-006, REQ-A-007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookInput"
+            example:
+              isbn: 978-0-307-47472-8
+              title: Cien años de soledad
+              author: Gabriel García Márquez
+              published_year: 1967
+              genre: novela
+      responses:
+        "201":
+          description: Libro creado
+          headers:
+            Location:
+              description: URI del libro creado
+              schema:
+                type: string
+                example: /books/3f1c2b9e-8a7d-4c1e-9b0a-1d2e3f4a5b6c
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /books/{bookId}:
+    parameters:
+      - $ref: "#/components/parameters/BookId"
+    get:
+      tags: [books]
+      operationId: getBook
+      summary: Obtener libro — REQ-A-002
+      responses:
+        "200":
+          description: Libro
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    put:
+      tags: [books]
+      operationId: replaceBook
+      summary: Reemplazar libro — REQ-A-004, REQ-A-006, REQ-A-007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookInput"
+      responses:
+        "200":
+          description: Libro actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      tags: [books]
+      operationId: deleteBook
+      summary: Eliminar libro — REQ-A-005
+      responses:
+        "204":
+          description: Eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+components:
+  parameters:
+    BookId:
+      name: bookId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+  schemas:
+    BookInput:
+      type: object
+      additionalProperties: false
+      required: [isbn, title, author]
+      properties:
+        isbn:
+          type: string
+          description: ISBN-13; se aceptan guiones y espacios, que se eliminan al normalizar
+          pattern: "^[0-9][0-9 -]{11,15}[0-9]$"
+          examples: ["9780307474728", "978-0-307-47472-8"]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        author:
+          type: string
+          minLength: 1
+          maxLength: 255
+        publisher:
+          type: [string, "null"]
+          maxLength: 255
+        published_year:
+          type: [integer, "null"]
+          minimum: 1450
+          description: No puede ser posterior al año actual (validado por el dominio)
+        genre:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 64
+    Book:
+      type: object
+      additionalProperties: false
+      required: [id, isbn, title, author, publisher, published_year, genre, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        isbn:
+          type: string
+          pattern: "^97[89][0-9]{10}$"
+        title:
+          type: string
+        author:
+          type: string
+        publisher:
+          type: [string, "null"]
+        published_year:
+          type: [integer, "null"]
+        genre:
+          type: [string, "null"]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    BookPage:
+      type: object
+      additionalProperties: false
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Book"
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        offset:
+          type: integer
+          minimum: 0
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable]
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [ok, error]
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          description: "about:blank o /problems/<slug> (p. ej. /problems/duplicate-isbn)"
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+    ValidationProblem:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+        - type: object
+          required: [errors]
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                required: [field, message]
+                properties:
+                  field:
+                    type: string
+                    description: Ruta del campo (p. ej. body.isbn, query.limit)
+                  message:
+                    type: string
+  responses:
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: /problems/not-found
+            title: Not Found
+            status: 404
+            detail: Book 3f1c2b9e-8a7d-4c1e-9b0a-1d2e3f4a5b6c not found
+    Conflict:
+      description: Conflicto con el estado actual (ISBN duplicado)
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: /problems/duplicate-isbn
+            title: Conflict
+            status: 409
+            detail: A book with ISBN 9780307474728 already exists
+    ValidationError:
+      description: Entrada inválida
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ValidationProblem"
+          example:
+            type: /problems/validation-error
+            title: Unprocessable Content
+            status: 422
+            detail: Request validation failed
+            errors:
+              - field: body.isbn
+                message: invalid ISBN-13 check digit

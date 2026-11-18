@@ -1,0 +1,15 @@
+title = "biblioteca"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Plantillas con valores ficticios de desarrollo local"
+paths = [
+  '''^\.env\.example$''',
+  '''deploy/k8s/.*\.example\.yaml$''',
+]
+regexes = [
+  '''change-me-local-only''',
+  '''REPLACE_ME''',
+]
